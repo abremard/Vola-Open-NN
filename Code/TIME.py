@@ -22,6 +22,7 @@ timeframes = ["1min", "2min", "5min"]
 read_col = ["Date and Time", "Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks"]
 write_col = ["Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks"]
 
+timeURL = '../Data/Input/Time/'
 
 def process_data():
 
@@ -29,11 +30,11 @@ def process_data():
 
         # features_data = pd.DataFrame(columns=features)
         
-        timeURL = 'D:/Documents/DNN-Trading/Time/' + timeframe
+        timeframeURL = timeURL + timeframe
 
-        for dirName in stockNames:
+        for stock in stockNames:
 
-            baseURL = timeURL + '/' + dirName
+            baseURL = timeframeURL + '/' + stock
 
             data = pd.read_csv(baseURL + '.csv', usecols=read_col)
 
@@ -41,9 +42,9 @@ def process_data():
 
             if not os.path.exists(baseURL):
                 os.mkdir(baseURL)
-                print("Directory " , dirName ,  " Created ")
+                print("Directory " , stock ,  " Created ")
             else:    
-                print("Directory " , dirName ,  " already exists")
+                print("Directory " , stock ,  " already exists")
 
             data_array = idc.preprocess(data)
 
@@ -69,11 +70,11 @@ def process_data():
                                             columns=features)
                     intradayData.to_csv(baseURL + "/" + day + ".csv", index=False)
                     # features_data = features_data.append(intradayData)
-                    print("symbol", dirName, "day", day, ", OK!")
+                    print("symbol", stock, "day", day, ", OK!")
                     day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
             print("%s seconds" % (time.time() - readStartTime))
 
-        directory = timeURL + "/features-selection"
+        directory = timeframeURL + "/features-selection"
         if not os.path.exists(directory):
             os.mkdir(directory)
             print("Directory " , directory ,  " Created ")
@@ -87,8 +88,8 @@ def combine_data():
 
         combined_data = pd.DataFrame()
 
-        timeURL = 'D:/Documents/DNN-Trading/Time/' + timeframe
-        directory = timeURL + "/features-selection"
+        timeframeURL = timeURL + timeframe
+        directory = timeframeURL + "/features-selection"
         
         for stockName in stockNames:
 
@@ -96,7 +97,7 @@ def combine_data():
             day = dayStart
 
             while not(endReached):
-                fname = "D:/Documents/DNN-Trading/Time/" + timeframe + '/' + stockName + "/" + day + ".csv"
+                fname = timeURL + timeframe + '/' + stockName + "/" + day + ".csv"
                 if day == dayEnd:
                     endReached = True
                 if os.path.isfile(fname):

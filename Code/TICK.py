@@ -9,16 +9,20 @@ stockNames = ["AAPL", "ABT","ACN","ADBE","AMGN","AMZN","BA","BA","CCEP","CMCSA",
 dayEnd = '2020-05-30'
 dayStart = '2019-01-01'
 
-for dirName in stockNames:
+tickURL = '../Data/Input/Tick/'
 
-    data = pd.read_csv('D:/Documents/DNN-Trading/Tick/' + dirName + '.csv', index_col='Date and Time', usecols=["Date and Time", "Open", "High", "Low", "Close"])
+for stock in stockNames:
+
+    stockURL = tickURL + stock
+
+    data = pd.read_csv(stockURL + '.csv', index_col='Date and Time', usecols=["Date and Time", "Open", "High", "Low", "Close"])
     data.columns = ["Open", "High", "Low", "Close"]
 
-    if not os.path.exists("D:/Documents/DNN-Trading/Tick/" + dirName):
-        os.mkdir("D:/Documents/DNN-Trading/Tick/" + dirName)
-        print("Directory " , dirName ,  " Created ")
+    if not os.path.exists(stockURL):
+        os.mkdir(stockURL)
+        print("Directory " , stock ,  " Created ")
     else:    
-        print("Directory " , dirName ,  " already exists")
+        print("Directory " , stock ,  " already exists")
 
     data.index = pd.to_datetime(data.index)
 
@@ -32,7 +36,7 @@ for dirName in stockNames:
         if intradayData.empty == True:
             day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
         else:
-            intradayData.to_csv("D:/Documents/DNN-Trading/Tick/" + dirName + "/" + day + ".csv")
-            print("symbol", dirName, "day", day, ", OK!")
+            intradayData.to_csv(stockURL + "/" + day + ".csv")
+            print("symbol", stock, "day", day, ", OK!")
             day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
     print("%s seconds" % (time.time() - readStartTime))

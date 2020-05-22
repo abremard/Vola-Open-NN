@@ -32,6 +32,8 @@ stockNames = ["AMZN","ABT","ACN","AAPL","BA","CSCO","CVX","DOW","FB","MO","NFLX"
 dayEnd = '2020-05-30'
 dayStart = '2019-01-01'
 
+timeURL = "../Data/Input/Time/"
+
 tradingDay = datetime.datetime.today().strftime('%Y-%m-%d')
 predictionDay = (pd.to_datetime(tradingDay) - pd.Timedelta('1 day')).strftime('%Y-%m-%d')
 
@@ -44,9 +46,10 @@ def annotation(windowSize):
     i = 0
 
     # Volatile
-    volaOpen = pd.read_csv("./benchmark.csv", usecols=["Symbol", "Date", "Score"])
+    volaOpen = pd.read_csv("../Data/Output/WL/Benchmark/benchmark.csv", usecols=["Symbol", "Date", "Score"])
 
     endReached = False
+
 
     # Match data to label
     for stockName in stockNames:
@@ -55,16 +58,16 @@ def annotation(windowSize):
         day = dayStart
         # Loop into data
         while not(endReached):
-            fname = "D:/Documents/DNN-Trading/Time/" + timeframe + '/' + stockName + "/" + day + ".csv"
+            fname = timeURL + timeframe + '/' + stockName + "/" + day + ".csv"
             if os.path.isfile(fname):
                 data = pd.read_csv(fname, usecols=col, skiprows=range(1, nbCandles - windowSize + 2))
 
                 day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
-                fname = "D:/Documents/DNN-Trading/Time/" + timeframe + '/' + stockName + "/" + day + ".csv"    
+                fname = timeURL + timeframe + '/' + stockName + "/" + day + ".csv"    
 
                 while(not(os.path.isfile(fname))):
                     day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
-                    fname = "D:/Documents/DNN-Trading/Time/" + timeframe + '/' + stockName + "/" + day + ".csv" 
+                    fname = timeURL + timeframe + '/' + stockName + "/" + day + ".csv" 
                     if day == dayEnd:
                         endReached = True
                         break
@@ -86,7 +89,7 @@ def annotation(windowSize):
     groupedLabel = pd.DataFrame(data=groupedLabel, columns=["Label"])
     xy_array = groupedData.assign(Label = groupedLabel.values)
     print(xy_array)
-    xy_array.to_csv("Production/xy-array.csv", index=False)
+    xy_array.to_csv("../Data/Output/Production/xy-array.csv", index=False)
 
 def preprocess_test_data():
     read_col = ["Date and Time", "Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks"]
@@ -95,7 +98,7 @@ def preprocess_test_data():
 
     for stock in stockNames:
 
-        data = pd.read_csv('Production/' + stock + '.csv', usecols=read_col)
+        data = pd.read_csv('../Data/Output/Production/' + stock + '.csv', usecols=read_col)
         cols = data.columns.tolist()
         cols = cols[-1:] + cols[:-1]
         data = data[cols]
@@ -116,7 +119,7 @@ def preprocess_test_data():
         # Output
         intradayData = idc.normalize(intradayData.to_numpy())
         intradayData = pd.DataFrame(data=intradayData, columns=features)
-        intradayData.to_csv("Production/processed/" + stock + ".csv", index=False)
+        intradayData.to_csv("../Data/Output/Production/processed/" + stock + ".csv", index=False)
         print("symbol", stock, ", OK!")
 
 def train(groupedData, groupedLabel):
@@ -139,7 +142,7 @@ def train(groupedData, groupedLabel):
 
     # Predictions
     for index, stock in enumerate(stockNames):
-        data = pd.read_csv("Production/processed/" + stock + ".csv", usecols=col, skiprows=range(1, nbCandles - windowSize + 2))
+        data = pd.read_csv("../Data/Output/Production/processed/" + stock + ".csv", usecols=col, skiprows=range(1, nbCandles - windowSize + 2))
         groupedData = np.empty((1,inputNeurones,))
         groupedData[0] = data.values.flatten()
         prediction = model.predict(groupedData)
@@ -147,11 +150,11 @@ def train(groupedData, groupedLabel):
 
     print(predictionList)
     
-    predictionList.to_csv("Production/predictions.csv")
+    predictionList.to_csv("../Data/Output/Production/predictions.csv")
 
 def job():
     # annotation(windowSize)
-    xy_array = pd.read_csv("D:/Documents/DNN-Trading/Time/" + timeframe + "/xy-array.csv")
+    xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
     groupedData = xy_array.iloc[:,:-1]
     groupedLabel = xy_array["Label"]
 
@@ -161,7 +164,7 @@ def job():
     send_message()
 
 def send_message():
-    data = open("Production/predictions.csv", 'rb').read()
+    data = open("../Data/Output/Production/predictions.csv", 'rb').read()
     base64_encoded = base64.b64encode(data).decode('UTF-8')
     api_key = '1d63a0438536320237a4c1b853df59c9'
     api_secret = '8e9ec8191b0183573a0cd94750aa37d8'
@@ -184,7 +187,7 @@ def send_message():
         "Attachments": [
             {
                 "ContentType": "text/plain",
-                "Filename": "test.csv",
+                "Filename": "predictions.csv",
                 "Base64Content": base64_encoded
             }
         ],

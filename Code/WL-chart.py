@@ -10,6 +10,8 @@ import os
 
 stockNames = ["AMZN","AAPL","ABT","ACN","AMGN","ADBE","BA","CCEP","CMCSA","CSCO","CVX","DOWWI","FB","HD","INTC","JNJ","MO","NFLX"]
 
+tickURL = "../Data/Input/Tick/"
+
 def division(n, d):
     return n / d if d else 0
 
@@ -25,7 +27,7 @@ totalSellWinProfit = totalSellLossProfit = 0
 benchmarkDict = {}
 
 for stock in stockNames:
-    path = "D:/Documents/DNN-Trading/Tick/" + stock + "/*.csv"
+    path = tickURL + stock + "/*.csv"
     for fname in glob.glob(path):
         currentDay = os.path.basename(fname).split(".")[0]
         data = pd.read_csv(fname, usecols=["Date and Time", "Open", "High", "Low", "Close"], index_col="Date and Time")
@@ -314,6 +316,6 @@ benchmarkDict['Average'] = {
 
 benchmarkDF = pd.DataFrame(benchmarkDict)
 
-benchmarkDF.T.to_csv('benchmark.csv')
+benchmarkDF.T.to_csv('../Data/Output/WL/Benchmark/benchmark.csv')
 
 print("totalProfit", totalProfit)

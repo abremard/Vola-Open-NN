@@ -30,27 +30,29 @@ testLabel = np.empty(testSize,)
 i = 0
 
 # Volatile
-volaOpen = pd.read_csv("./benchmark.csv", usecols=["Symbol", "Date", "Score"])
+volaOpen = pd.read_csv("../Data/Output/WL/Benchmark/benchmark.csv", usecols=["Symbol", "Date", "Score"])
 
 endReached = False
 
+timeURL = "../Data/Input/Time/"
+
 # Match data to label
-for stockName in stockNames:
+for stock in stockNames:
     # Initialise
     endReached = False
     day = dayStart
     # Loop into data
     while not(endReached):
-        fname = "D:/Documents/DNN-Trading/Time/" + stockName + "/" + day + ".csv"
+        fname = timeURL + stock + "/" + day + ".csv"
         if os.path.isfile(fname):
             data = pd.read_csv(fname, usecols=['Close'], nrows=100)
 
             day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
-            fname = "D:/Documents/DNN-Trading/Time/" + stockName + "/" + day + ".csv"    
+            fname = timeURL + stock + "/" + day + ".csv"    
 
             while(not(os.path.isfile(fname))):
                 day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
-                fname = "D:/Documents/DNN-Trading/Time/" + stockName + "/" + day + ".csv" 
+                fname = timeURL + stock + "/" + day + ".csv" 
                 if day == dayEnd:
                     endReached = True
                     break
@@ -58,7 +60,7 @@ for stockName in stockNames:
             if endReached:
                 break
 
-            predictionValue = volaOpen.loc[(volaOpen['Date'] == day) & (volaOpen['Symbol'] == stockName)].iloc[0]['Score']
+            predictionValue = volaOpen.loc[(volaOpen['Date'] == day) & (volaOpen['Symbol'] == stock)].iloc[0]['Score']
             if predictionValue:
                 label = not(math.isnan(predictionValue) or predictionValue <= 0)
                 groupedLabel[i] = label

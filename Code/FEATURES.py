@@ -50,7 +50,7 @@ def amount_of_variation(data, baseURL):
     fig.write_html(url, auto_open=True)
 
 for timeframe in timeframes:
-    timeURL = 'D:/Documents/DNN-Trading/Time/' + timeframe
+    timeURL = '../Data/Input/Time/' + timeframe
     data = pd.read_csv(timeURL + "/xy-array.csv")
     # show_plot(data)
     amount_of_variation(data, timeURL)

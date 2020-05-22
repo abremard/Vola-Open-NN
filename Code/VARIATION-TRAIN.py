@@ -30,6 +30,8 @@ windowSizes = [78]
 # stockNames = ["AMZN","ABT","ACN","AAPL","AMGN","ADBE","BA","CCEP","CMCSA","CSCO","CVX","DOWWI","FB","HD","INTC","JNJ","MO","NFLX"]
 stockNames = ["AMZN","ABT","ACN","AAPL","BA","CSCO","CVX","DOWWI","FB","MO","NFLX"]
 
+timeURL = "../Data/Input/Time/"
+
 
 def annotation(windowSize):
     # col = ["Up Ticks", "Down Ticks", "SD-20", "MACD", "SD-100", "Volume", "SMA-50", "EMA-50", "SMA-100", "EMA-100"]
@@ -40,34 +42,34 @@ def annotation(windowSize):
     dayEnd = '2020-05-30'
     dayStart = '2019-01-01'
 
-
     # Initialize
     groupedData = np.empty((dataSize,inputNeurones,))
     groupedLabel = np.empty((dataSize,))
     i = 0
 
     # Volatile
-    volaOpen = pd.read_csv("./benchmark.csv", usecols=["Symbol", "Date", "Score"])
+    volaOpen = pd.read_csv("../Data/Output/WL/Benchmark/benchmark.csv", usecols=["Symbol", "Date", "Score"])
 
     endReached = False
 
+
     # Match data to label
-    for stockName in stockNames:
+    for stock in stockNames:
         # Initialise
         endReached = False
         day = dayStart
         # Loop into data
         while not(endReached):
-            fname = "D:/Documents/DNN-Trading/Time/" + timeframe + '/' + stockName + "/" + day + ".csv"
+            fname = timeURL + timeframe + '/' + stock + "/" + day + ".csv"
             if os.path.isfile(fname):
                 data = pd.read_csv(fname, usecols=col, skiprows=range(1, nbCandles - windowSize + 2))
 
                 day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
-                fname = "D:/Documents/DNN-Trading/Time/" + timeframe + '/' + stockName + "/" + day + ".csv"    
+                fname = timeURL + timeframe + '/' + stock + "/" + day + ".csv"    
 
                 while(not(os.path.isfile(fname))):
                     day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
-                    fname = "D:/Documents/DNN-Trading/Time/" + timeframe + '/' + stockName + "/" + day + ".csv" 
+                    fname = timeURL + timeframe + '/' + stock + "/" + day + ".csv" 
                     if day == dayEnd:
                         endReached = True
                         break
@@ -75,7 +77,7 @@ def annotation(windowSize):
                 if endReached:
                     break
 
-                predictionValue = volaOpen.loc[(volaOpen['Date'] == day) & (volaOpen['Symbol'] == stockName)].iloc[0]['Score']
+                predictionValue = volaOpen.loc[(volaOpen['Date'] == day) & (volaOpen['Symbol'] == stock)].iloc[0]['Score']
                 if predictionValue:
                     label = not(math.isnan(predictionValue) or predictionValue <= 0)
                     groupedLabel[i] = label
@@ -89,7 +91,7 @@ def annotation(windowSize):
     groupedLabel = pd.DataFrame(data=groupedLabel, columns=["Label"])
     xy_array = groupedData.assign(Label = groupedLabel.values)
     print(xy_array)
-    xy_array.to_csv("D:/Documents/DNN-Trading/Time/" + timeframe + "/xy-array.csv", index=False)
+    xy_array.to_csv(timeURL + timeframe + "/xy-array.csv", index=False)
 
 def train(groupedData, groupedLabel):
     # print(groupedData)
@@ -256,7 +258,7 @@ def grid_opti(x_train, y_train):
 
 for windowSize in windowSizes:
     # annotation(windowSize)
-    xy_array = pd.read_csv("D:/Documents/DNN-Trading/Time/" + timeframe + "/xy-array.csv")
+    xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
     groupedData = xy_array.iloc[:,:-1].to_numpy()
     groupedLabel = xy_array["Label"].to_numpy()
     averageIncrease, averageAcc = train(groupedData, groupedLabel)

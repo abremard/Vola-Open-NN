@@ -5,10 +5,10 @@ import urllib.request as url
 import urllib.error as urlerror
 
 # Location of symbol list to extract
-symbollist_path = "Production/SymbolList.csv"
+symbollist_path = "../Data/Output/Production/SymbolList.csv"
 
 # Location to save output data
-save_path = 'Production/'
+save_path = '../Data/Output/Production/'
 
 
 ## API credentials and Parameters
