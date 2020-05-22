@@ -1,0 +1,208 @@
+import pandas as pd
+import numpy as np
+import os
+import math
+import tensorflow as tf
+from tensorflow import keras
+from sklearn.metrics import confusion_matrix
+import INDICATORS as idc
+import SYMBOL as sb
+import schedule
+import time
+from mailjet_rest import Client
+import os
+
+import base64
+import csv
+from io import StringIO
+
+import datetime
+from matplotlib import pyplot as plt
+from sklearn.model_selection import KFold
+
+
+# !!!!!!!!!!!!!!!!!!!!! Wait for new data and change stockNames array to split !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+timeframe = '5min'
+dataSize = 2958
+col = ["SMA-20", "SMA-200", "Volume"]
+nbCandles = 78
+windowSize = 78
+stockNames = ["AMZN","ABT","ACN","AAPL","BA","CSCO","CVX","DOW","FB","MO","NFLX"]
+dayEnd = '2020-05-30'
+dayStart = '2019-01-01'
+
+tradingDay = datetime.datetime.today().strftime('%Y-%m-%d')
+predictionDay = (pd.to_datetime(tradingDay) - pd.Timedelta('1 day')).strftime('%Y-%m-%d')
+
+def annotation(windowSize):
+    inputNeurones = windowSize * len(col)
+
+    # Initialize
+    groupedData = np.empty((dataSize,inputNeurones,))
+    groupedLabel = np.empty((dataSize,))
+    i = 0
+
+    # Volatile
+    volaOpen = pd.read_csv("./benchmark.csv", usecols=["Symbol", "Date", "Score"])
+
+    endReached = False
+
+    # Match data to label
+    for stockName in stockNames:
+        # Initialise
+        endReached = False
+        day = dayStart
+        # Loop into data
+        while not(endReached):
+            fname = "D:/Documents/DNN-Trading/Time/" + timeframe + '/' + stockName + "/" + day + ".csv"
+            if os.path.isfile(fname):
+                data = pd.read_csv(fname, usecols=col, skiprows=range(1, nbCandles - windowSize + 2))
+
+                day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
+                fname = "D:/Documents/DNN-Trading/Time/" + timeframe + '/' + stockName + "/" + day + ".csv"    
+
+                while(not(os.path.isfile(fname))):
+                    day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
+                    fname = "D:/Documents/DNN-Trading/Time/" + timeframe + '/' + stockName + "/" + day + ".csv" 
+                    if day == dayEnd:
+                        endReached = True
+                        break
+
+                if endReached:
+                    break
+
+                predictionValue = volaOpen.loc[(volaOpen['Date'] == day) & (volaOpen['Symbol'] == stockName)].iloc[0]['Score']
+                if predictionValue:
+                    label = not(math.isnan(predictionValue) or predictionValue <= 0)
+                    groupedLabel[i] = label
+                    groupedData[i] = data.values.flatten()
+                    i = i+1
+            else:
+                day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
+                if day == dayEnd:
+                    endReached = True
+    groupedData = pd.DataFrame(data=groupedData)
+    groupedLabel = pd.DataFrame(data=groupedLabel, columns=["Label"])
+    xy_array = groupedData.assign(Label = groupedLabel.values)
+    print(xy_array)
+    xy_array.to_csv("Production/xy-array.csv", index=False)
+
+def preprocess_test_data():
+    read_col = ["Date and Time", "Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks"]
+    stockNames = ["AAPL","ABT","ACN","ADBE","AMGN","AMZN","BA","CCEP","CMCSA","CSCO","CVX","DOW","FB","HD","INTC","JNJ","MO","NFLX"]
+    features = ["Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks", "SMA-5", "SMA-10", "SMA-15", "SMA-20", "SMA-50", "SMA-100", "SMA-200", "EMA-5", "EMA-10", "EMA-15", "EMA-20", "EMA-50", "EMA-100", "EMA-200", "BOLU-20", "BOLD-20", "MACD", "SD-5", "SD-10", "SD-15", "SD-20", "SD-50", "SD-100", "SD-200", "SMAC-5", "SMAC-10", "SMAC-15", "SMAC-20", "SMAC-50", "SMAC-100", "SMAC-200", "EMAC-5", "EMAC-10", "EMAC-15", "EMAC-20", "EMAC-50", "EMAC-100", "EMAC-200", "MACDC"]
+
+    for stock in stockNames:
+
+        data = pd.read_csv('Production/' + stock + '.csv', usecols=read_col)
+        cols = data.columns.tolist()
+        cols = cols[-1:] + cols[:-1]
+        data = data[cols]
+
+        data["Date"] = pd.DatetimeIndex(data["Date and Time"]).dayofweek
+
+        data_array = idc.preprocess(data)
+
+        dataframe = pd.DataFrame(data=data_array[:,1:],    # values
+                                index=data_array[:,0],    # 1st column as index
+                                columns=features)
+
+        dataframe.index = pd.to_datetime(dataframe.index)
+
+        filteredData = dataframe.between_time('09:30', '16:00')
+
+        intradayData = filteredData[predictionDay:predictionDay]
+        # Output
+        intradayData = idc.normalize(intradayData.to_numpy())
+        intradayData = pd.DataFrame(data=intradayData, columns=features)
+        intradayData.to_csv("Production/processed/" + stock + ".csv", index=False)
+        print("symbol", stock, ", OK!")
+
+def train(groupedData, groupedLabel):
+
+    inputNeurones = windowSize * len(col)
+
+    x_train = groupedData.to_numpy()
+    y_train = groupedLabel.to_numpy()
+    
+    model = keras.Sequential()
+    model.add(keras.layers.Dense(64, activation=tf.nn.relu))
+    model.add(keras.layers.Dense(16, activation=tf.nn.relu))
+    model.add(keras.layers.Dense(1, kernel_initializer= 'glorot_uniform', activation=tf.nn.sigmoid))
+
+    model.compile(keras.optimizers.Adam(), loss='binary_crossentropy', metrics=['accuracy'])
+
+    model.fit(x_train, y_train, epochs=100, batch_size=64) 
+
+    predictionList = pd.DataFrame(columns=['Stock', 'Prediction', 'Round'])
+
+    # Predictions
+    for index, stock in enumerate(stockNames):
+        data = pd.read_csv("Production/processed/" + stock + ".csv", usecols=col, skiprows=range(1, nbCandles - windowSize + 2))
+        groupedData = np.empty((1,inputNeurones,))
+        groupedData[0] = data.values.flatten()
+        prediction = model.predict(groupedData)
+        predictionList.loc[index] = [stock, prediction[0][0], round(prediction[0][0])]
+
+    print(predictionList)
+    
+    predictionList.to_csv("Production/predictions.csv")
+
+def job():
+    # annotation(windowSize)
+    xy_array = pd.read_csv("D:/Documents/DNN-Trading/Time/" + timeframe + "/xy-array.csv")
+    groupedData = xy_array.iloc[:,:-1]
+    groupedLabel = xy_array["Label"]
+
+    # sb.rename()
+    preprocess_test_data()
+    train(groupedData, groupedLabel)
+    send_message()
+
+def send_message():
+    data = open("Production/predictions.csv", 'rb').read()
+    base64_encoded = base64.b64encode(data).decode('UTF-8')
+    api_key = '1d63a0438536320237a4c1b853df59c9'
+    api_secret = '8e9ec8191b0183573a0cd94750aa37d8'
+    mailjet = Client(auth=(api_key, api_secret), version='v3.1')
+    data = {
+    'Messages': [
+        {
+        "From": {
+            "Email": "mogilno.trading@gmail.com",
+            "Name": "Mogilno"
+        },
+        "To": [
+            {
+            "Email": "bremard.alexandre@gmail.com",
+            "Name": "Alexandre"
+            }
+        ],
+        "Subject": "Prediction Vola Open pour le " + predictionDay,
+        "TextPart": "Ceci est un mail automatique.\nTableau des résultats de prédictions par le réseau pour la journée du " + predictionDay + ".\nLa valeur de prédiction est comprise entre 0 et 1:\n1 étant fortement recommandé, 0 étant pas du tout recommandé.",
+        "Attachments": [
+            {
+                "ContentType": "text/plain",
+                "Filename": "test.csv",
+                "Base64Content": base64_encoded
+            }
+        ],
+        "CustomID": "AppPredictionData"
+        }
+    ]
+    }
+    result = mailjet.send.create(data=data)
+    print (result.status_code)
+    print (result.json())
+
+# Scheduler
+schedule.every().day.at("10:15").do(job)
+
+# *************************** MAIN ***********************************
+
+job()
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
