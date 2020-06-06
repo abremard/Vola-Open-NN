@@ -1,13 +1,15 @@
 import time
 import os
-
-import pandas as pd
 from datetime import datetime
 
-stockNames = ["AAPL", "ABT","ACN","ADBE","AMGN","AMZN","BA","BA","CCEP","CMCSA","CSCO","CVX","DOWWI","FB","HD","INTC","JNJ","MO","NFLX"]
+import pandas as pd
 
-dayEnd = '2020-05-30'
-dayStart = '2019-01-01'
+stockNames = ["AMZN","ABT","ACN","AAPL","BA","CSCO","CVX","DOW","FB","MO","NFLX"]
+
+dayEnd = datetime.today().strftime('%Y-%m-%d')
+dayStart = (pd.to_datetime(dayEnd) - pd.Timedelta('10 day')).strftime('%Y-%m-%d')
+
+print(dayStart, dayEnd)
 
 tickURL = '../Data/Input/Tick/'
 
