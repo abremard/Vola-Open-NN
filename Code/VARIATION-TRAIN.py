@@ -22,7 +22,7 @@ from sklearn.preprocessing import StandardScaler
 
 timeframe = '5min'
 # dataSize = 4840
-dataSize = 2958
+dataSize = 2200
 col = ["SMA-20", "SMA-200", "Volume"]
 # col = ["Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks", "SMA-5", "SMA-10", "SMA-15", "SMA-20", "SMA-50", "SMA-100", "SMA-200", "EMA-5", "EMA-10", "EMA-15", "EMA-20", "EMA-50", "EMA-100", "EMA-200", "BOLU-20", "BOLD-20", "SD-5", "SD-10", "SD-15", "SD-20", "SD-50", "SD-100", "MACD", "SMAC-5", "SMAC-10", "SMAC-15", "SMAC-20", "SMAC-50", "SMAC-100", "SMAC-200", "EMAC-5", "EMAC-10", "EMAC-15", "EMAC-20", "EMAC-50", "EMAC-100", "EMAC-200", "MACDC"]
 nbCandles = 78
@@ -90,7 +90,6 @@ def annotation(windowSize):
     groupedData = pd.DataFrame(data=groupedData)
     groupedLabel = pd.DataFrame(data=groupedLabel, columns=["Label"])
     xy_array = groupedData.assign(Label = groupedLabel.values)
-    print(xy_array)
     xy_array.to_csv(timeURL + timeframe + "/xy-array.csv", index=False)
 
 def train(groupedData, groupedLabel):

@@ -9,7 +9,6 @@ import INDICATORS as idc
 import SYMBOL as sb
 import schedule
 import time
-from mailjet_rest import Client
 import os
 
 import base64
@@ -19,6 +18,9 @@ from io import StringIO
 import datetime
 from matplotlib import pyplot as plt
 from sklearn.model_selection import KFold
+
+
+# !!!!!!!!!!!!!!!!!!!!! Wait for new data and change stockNames array to split !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 timeframe = '5min'
 dataSize = 2958
@@ -31,7 +33,9 @@ dayStart = '2019-01-01'
 
 timeURL = "../Data/Input/Time/"
 
-tradingDay = datetime.datetime.today().strftime('%Y-%m-%d')
+# tradingDay = datetime.datetime.today().strftime('%Y-%m-%d')
+tradingDay = '2020-04-20'
+
 predictionDay = (pd.to_datetime(tradingDay) - pd.Timedelta('1 day')).strftime('%Y-%m-%d')
 
 def annotation(windowSize):
@@ -150,7 +154,7 @@ def train(groupedData, groupedLabel):
     predictionList.to_csv("../Data/Output/Production/predictions.csv")
 
 def job():
-    # annotation(windowSize)
+    annotation(windowSize)
     xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
     groupedData = xy_array.iloc[:,:-1]
     groupedLabel = xy_array["Label"]
@@ -158,51 +162,6 @@ def job():
     # sb.rename()
     preprocess_test_data()
     train(groupedData, groupedLabel)
-    send_message()
-
-def send_message():
-    data = open("../Data/Output/Production/predictions.csv", 'rb').read()
-    base64_encoded = base64.b64encode(data).decode('UTF-8')
-    api_key = '1d63a0438536320237a4c1b853df59c9'
-    api_secret = '8e9ec8191b0183573a0cd94750aa37d8'
-    mailjet = Client(auth=(api_key, api_secret), version='v3.1')
-    data = {
-    'Messages': [
-        {
-        "From": {
-            "Email": "mogilno.trading@gmail.com",
-            "Name": "Mogilno"
-        },
-        "To": [
-            {
-            "Email": "bremard.alexandre@gmail.com",
-            "Name": "Alexandre"
-            }
-        ],
-        "Subject": "Prediction Vola Open pour le " + predictionDay,
-        "TextPart": "Ceci est un mail automatique.\nTableau des résultats de prédictions par le réseau pour la journée du " + predictionDay + ".\nLa valeur de prédiction est comprise entre 0 et 1:\n1 étant fortement recommandé, 0 étant pas du tout recommandé.",
-        "Attachments": [
-            {
-                "ContentType": "text/plain",
-                "Filename": "predictions.csv",
-                "Base64Content": base64_encoded
-            }
-        ],
-        "CustomID": "AppPredictionData"
-        }
-    ]
-    }
-    result = mailjet.send.create(data=data)
-    print (result.status_code)
-    print (result.json())
-
-# Scheduler
-schedule.every().day.at("10:15").do(job)
 
 # *************************** MAIN ***********************************
-
 job()
-
-while True:
-    schedule.run_pending()
-    time.sleep(1)

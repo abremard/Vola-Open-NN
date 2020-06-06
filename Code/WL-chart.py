@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import time
 
-import dask.dataframe as dd
+import dask.dataframe as dd # Dask is meant for performance impovement, not implemented yet
 
 import glob
 import os
@@ -93,7 +93,8 @@ for stock in stockNames:
 
             entryHigh = entryLow = None
 
-            inPosition = False
+            countSellPosition = 0
+            countBuyPosition = 0
 
             trend = True
 
@@ -117,140 +118,161 @@ for stock in stockNames:
                 annotations=[]
             )
 
-            firstObjectiveReached = False
-            position = None
             nbPosition = 0
             nbBuyPosition = nbSellPosition = 0
             nbBuyWin = nbBuyLoss = 0
             buyWinProfit = buyLossProfit = 0
             sellWinProfit = sellLossProfit = 0
             nbSellWin = nbSellLoss = 0
-            entryPrice = None
-            stopLoss = None
-            previousLow = None
-            previousHigh = None
+            previousLow = WLDataframe['Low'].iloc[0]
+            previousHigh = WLDataframe['High'].iloc[0]
+
+            positions = []
 
             profit = 0
-            sizing = 0
-            risk = 0
 
             for row in WLDataframe.itertuples():    
 
-                if inPosition:
+                if countBuyPosition > 0 or countSellPosition > 0:
 
-                    if position == 'buy':
-                        # Stop-loss triggered
-                        if row.Low <= stopLoss or row.Index == len(WLDataframe) - 1:
-                            fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="Red", opacity=0.3, line_width=0))
-                            exitPrice = stopLoss
-                            if firstObjectiveReached:
-                                profit = profit + (exitPrice - entryPrice) * sizing * 2 / 3
-                            else:
-                                profit = profit + (exitPrice - entryPrice) * sizing
-                            if profit >= 0:
-                                nbBuyWin = nbBuyWin + 1
-                                buyWinProfit = buyWinProfit + profit
-                            else: 
-                                nbBuyLoss = nbBuyLoss + 1
-                                buyLossProfit = buyLossProfit + profit
-                            inPosition = False
-                            break
-                        # First objective reached triggered
-                        if not(firstObjectiveReached):
-                            if row.High > firstTargetHigh:
-                                stopLoss = ovRangeHigh
-                                fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="Yellow", opacity=0.3, line_width=0))
-                                firstObjectiveReached = True
-                                profit = profit + (firstTargetHigh - entryPrice) * sizing / 3
-                        # Price is over first objective
-                        else:
-                            if trend:
-                                if row.High > previousHigh:
-                                    top = row.High
-                                else:
-                                    bottom = top
-                                    trend = False
-                            else:
-                                if row.Low < bottom:
-                                    bottom = row.Low
-                                if row.High > top:
-                                    trend = True
-                                    stopLoss = bottom
-                                    fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="LightSalmon", opacity=0.3, line_width=0))
-                            previousHigh = row.High
-                            previousLow = row.Low
+                    for pos in positions:
 
-                    elif position == 'sell':
-                        # Stop-loss triggered
-                        if row.Low >= stopLoss or row.Index == len(WLDataframe) - 1:
-                            fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="Red", opacity=0.3, line_width=0))
-                            exitPrice = stopLoss
-                            if firstObjectiveReached:
-                                profit = profit + (entryPrice - exitPrice) * sizing * 2 / 3
-                            else:
-                                profit = profit + (entryPrice - exitPrice) * sizing
-                            if profit >= 0:
-                                nbSellWin = nbSellWin + 1
-                                sellWinProfit = sellWinProfit + profit
-                            else: 
-                                nbSellLoss = nbSellLoss + 1
-                                sellLossProfit = sellLossProfit + profit
-                            inPosition = False
-                            break
-                        # First objective reached triggered
-                        if not(firstObjectiveReached):
-                            if row.Low < firstTargetLow:
-                                stopLoss = ovRangeLow
-                                fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="Yellow", opacity=0.3, line_width=0))
-                                firstObjectiveReached = True
-                                profit = profit + (entryPrice - firstTargetLow) * sizing / 3
-                        # Price is over first objective
-                        else:
-                            if trend:
-                                if row.Low < previousLow:
-                                    bottom = row.Low
-                                else:
-                                    top = bottom
-                                    trend = False
-                            else:
-                                if row.High > top:
-                                    top = row.High
-                                if row.Low < bottom:
-                                    trend = True
-                                    stopLoss = top
-                                    fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="LightSalmon", opacity=0.3, line_width=0))
-                            previousHigh = row.High
-                            previousLow = row.Low
+                        if pos['inPosition'] == True:
+                                
+                            if pos['order'] == 'buy':
+                                # Stop-loss triggered
+                                if row.Low < pos['stopLoss'] or row.Index == len(WLDataframe) - 1:
+                                    fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="Red", opacity=0.3, line_width=0))
+                                    pos['exitPrice'] = pos['stopLoss']
+                                    if pos['firstObjectiveReached']:
+                                        pos['profit'] = pos['profit'] + (pos['exitPrice'] - pos['entryPrice']) * pos['sizing'] * 2 / 3
+                                    else:
+                                        pos['profit'] = pos['profit'] + (pos['exitPrice'] - pos['entryPrice']) * pos['sizing']
+                                    profit = profit + pos['profit']
+                                    if pos['profit'] >= 0:
+                                        nbBuyWin = nbBuyWin + 1
+                                        buyWinProfit = buyWinProfit + pos['profit']
+                                    else: 
+                                        nbBuyLoss = nbBuyLoss + 1
+                                        buyLossProfit = buyLossProfit + pos['profit']
+                                    pos['inPosition'] = False
+                                    break
+                                # First objective reached triggered
+                                if not(pos['firstObjectiveReached']):
+                                    if row.High > firstTargetHigh:
+                                        pos['stopLoss'] = ovRangeHigh
+                                        fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="Yellow", opacity=0.3, line_width=0))
+                                        pos['firstObjectiveReached'] = True
+                                        pos['profit'] = pos['profit'] + (firstTargetHigh - pos['entryPrice']) * pos['sizing'] / 3
+                                        profit = profit + pos['profit']
+                                # Price is over first objective
+                                elif row.High > firstTargetHigh :
+                                    if trend:
+                                        if row.High > previousHigh:
+                                            top = row.High
+                                        else:
+                                            bottom = top
+                                            trend = False
+                                    else:
+                                        if row.Low < bottom:
+                                            bottom = row.Low
+                                        if row.High > top:
+                                            trend = True
+                                            pos['stopLoss'] = bottom
+                                            fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="LightSalmon", opacity=0.3, line_width=0))
 
-                else:
+                            elif pos['order'] == 'sell':
+                                # Stop-loss triggered
+                                if row.Low > pos['stopLoss'] or row.Index == len(WLDataframe) - 1:
+                                    fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="Red", opacity=0.3, line_width=0))
+                                    pos['exitPrice'] = pos['stopLoss']
+                                    if pos['firstObjectiveReached']:
+                                        pos['profit'] = pos['profit'] + (pos['entryPrice'] - pos['exitPrice']) * pos['sizing'] * 2 / 3
+                                    else:
+                                        pos['profit'] = pos['profit'] + (pos['entryPrice'] - pos['exitPrice']) * pos['sizing']
+                                    profit = profit + pos['profit']
+                                    if pos['profit'] >= 0:
+                                        nbSellWin = nbSellWin + 1
+                                        sellWinProfit = sellWinProfit + pos['profit']
+                                    else: 
+                                        nbSellLoss = nbSellLoss + 1
+                                        sellLossProfit = sellLossProfit + pos['profit']
+                                    pos['inPosition'] = False
+                                    break
+                                # First objective reached triggered
+                                if not(pos['firstObjectiveReached']):
+                                    if row.Low < firstTargetLow:
+                                        pos['stopLoss'] = ovRangeLow
+                                        fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="Yellow", opacity=0.3, line_width=0))
+                                        pos['firstObjectiveReached'] = True
+                                        pos['profit'] = pos['profit'] + (pos['entryPrice'] - firstTargetLow) * pos['sizing'] / 3
+                                        profit = profit + pos['profit']
+                                # Price is below first objective
+                                elif row.Low < firstTargetLow :
+                                    if trend:
+                                        if row.Low < previousLow:
+                                            bottom = row.Low
+                                        else:
+                                            top = bottom
+                                            trend = False
+                                    else:
+                                        if row.High > top:
+                                            top = row.High
+                                        if row.Low < bottom:
+                                            trend = True
+                                            pos['stopLoss'] = top
+                                            fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="LightSalmon", opacity=0.3, line_width=0))
+
+                if countBuyPosition < 2 :
                     # enter buy position
-                    if row.Close > ovRangeHigh:
+                    if (row.Close > ovRangeHigh) and (previousHigh <= ovRangeHigh) :
                         fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="LightSeaGreen", opacity=0.3, line_width=0))
-                        entryPrice = row.High
-                        previousHigh = top = row.High
-                        previousLow = row.Low
-                        stopLoss = firstTargetLow + 0.1
-                        risk = abs(row.High - stopLoss)
-                        sizing = 100 / risk
-                        inPosition = True
-                        position = 'buy'
+                        tmpSL = firstTargetLow + 0.1
+                        tmpRisk = abs(row.High - tmpSL)
+                        positions.append({
+                            'entryPrice': row.High,
+                            'stopLoss': tmpSL,
+                            'risk': tmpRisk,
+                            'sizing': 100 / tmpRisk,
+                            'order': 'buy',
+                            'profit': 0,
+                            'exitPrice': None,
+                            'inPosition': True,
+                            'firstObjectiveReached': False
+                        })
+                        bottom = row.Low
+                        top = row.High
+                        countBuyPosition += 1
                         nbBuyPosition = nbBuyPosition + 1
                         nbPosition = nbPosition + 1
+                if countSellPosition < 2 :
                     # enter sell position
-                    elif row.Close < ovRangeLow:
+                    if (row.Close < ovRangeLow) and (previousLow >= ovRangeLow) :
                         fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="LightSeaGreen", opacity=0.3, line_width=0))
-                        entryPrice = row.Low
-                        previousHigh = top = row.High
-                        previousLow = row.Low
-                        stopLoss = firstTargetHigh - 0.1
-                        risk = abs(row.Low - stopLoss)
-                        sizing = 100 / risk
-                        inPosition = True
-                        position = 'sell'
+                        tmpSL = firstTargetHigh - 0.1
+                        tmpRisk = abs(row.Low - tmpSL)
+                        positions.append({
+                            'entryPrice': row.Low,
+                            'stopLoss': tmpSL,
+                            'risk': tmpRisk,
+                            'sizing': 100 / tmpRisk,
+                            'order': 'sell',
+                            'profit': 0,
+                            'exitPrice': None,
+                            'inPosition': True,
+                            'firstObjectiveReached': False
+                        })
+                        bottom = row.Low
+                        top = row.High
+                        countSellPosition += 1
                         nbSellPosition = nbSellPosition + 1
                         nbPosition = nbPosition + 1
 
-            print('riskRange', ovRangeHigh - firstTargetLow, 'risk', risk, 'sizing', sizing, 'profit', profit, 'nbPosition', nbPosition)
+                previousHigh = row.High
+                previousLow = row.Low
+
+            # A corriger... mais pas urgent
+            print(nbDays, '. riskRange', ovRangeHigh - firstTargetLow, 'risk', pos['risk'], 'sizing', pos['sizing'], 'profit', profit, 'nbPosition', nbPosition)
             totalProfit = totalProfit + profit
             totalPositions = totalPositions + nbPosition
             totalSellPositions = totalSellPositions + nbSellPosition
@@ -267,7 +289,7 @@ for stock in stockNames:
         benchmarkDict[nbDays] = {
             "Symbol":stock,
             "Date":currentDay,
-            "Sizing":str(sizing),
+            "Sizing":str(pos['sizing']),
             "Profit":str(profit),
             "Sell Positions":str(nbSellPosition),
             "Sell Win":str(nbSellWin),
@@ -280,9 +302,9 @@ for stock in stockNames:
             }
 
         fig.update_layout(
-            title="Vola Open Strategy --- " + currentDay + " --- sizing : " + str(sizing) + " --- profit : " + str(profit) + " --- positions : " + str(nbPosition),
+            title="Vola Open Strategy --- " + currentDay + " --- sizing : " + str(pos['sizing']) + " --- profit : " + str(profit) + " --- positions : " + str(nbPosition),
         )
-        # fig.write_html("html/" + str(nbDays) + ".html", auto_open=False)
+        # fig.write_html("../Data/Output/WL/HTML/" + str(nbDays) + ".html", auto_open=False)
 
 benchmarkDict['Total'] = {
     "Sell Positions":str(totalSellPositions),
@@ -316,6 +338,6 @@ benchmarkDict['Average'] = {
 
 benchmarkDF = pd.DataFrame(benchmarkDict)
 
-benchmarkDF.T.to_csv('../Data/Output/WL/Benchmark/benchmark.csv')
+benchmarkDF.T.to_csv('../Data/Output/WL/Benchmark/benchmark-test.csv')
 
 print("totalProfit", totalProfit)
