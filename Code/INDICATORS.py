@@ -1,9 +1,32 @@
+"""Toolbox to generate indicators based on OHLC-Volume, please refer to Investopedia for indicators detail and formulas
+    https://www.investopedia.com/
+
+    Author :
+        Alexandre Bremard
+    Citations :
+        "Machine Learning in Intraday Stock Trading" : Art Paspanthong, Nick Tantivasadakarn, Will Vithayapalert form Stanford University
+        http://cs229.stanford.edu/proj2019spr/report/28.pdf
+    Version Control :
+        1.0 - 07/06/2020 : std deviation, typical price, sma, ema, momentum, bollband, macd, days since cross, macd cross, ma cross, rsi, stochastic, normalization
+"""
+
+# ----------------------------------------------------------------- External Imports
 import numpy as np
 import pandas as pd
-
 import time
 
+
+# ----------------------------------------------------------------- Body
 def create_std_deviation(price_array, window):
+    """Standard price deviation for a given time window
+
+    Args:
+        price_array (np.array): typical price most of the case
+        window (int): number of periods back in time 
+
+    Returns:
+        std (np.array): std deviation array
+    """    
     length = len(price_array)
     if len(price_array) < window:
         return None
@@ -15,10 +38,29 @@ def create_std_deviation(price_array, window):
     return std[:, np.newaxis]
 
 def create_typical_price(high_array, low_array, close_array):
+    """Typical price as defined in investopedia
+
+    Args:
+        high_array (np.array): High
+        low_array (np.array): Low
+        close_array (np.array): Close
+
+    Returns:
+        typ (np.array): Typical Price
+    """    
     typ = np.add(np.add(high_array, low_array), close_array)/3
     return typ
 
 def create_sma(price_array, window):
+    """Simple Moving Average Generator on a given period, cumulative sum is being used for time efficiency
+
+    Args:
+        price_array (np.array): closing price most of the case
+        window (int): number of periods back in time 
+
+    Returns:
+        sma (np.array): SMA
+    """    
     if len(price_array) < window:
         return None
     sma = np.zeros(len(price_array))
@@ -28,6 +70,16 @@ def create_sma(price_array, window):
     return sma[:, np.newaxis]
 
 def create_ema(price_array, sma, window):
+    """Exponential Moving Average
+
+    Args:
+        price_array (np.array): closing price most of the case
+        sma (np.array): associated simple moving average
+        window (int): number of periods back in time 
+
+    Returns:
+        ema (np.array): EMA
+    """    
     if len(price_array) < window:
         return None
     c = 2./float(window + 1)
@@ -40,12 +92,33 @@ def create_ema(price_array, sma, window):
     return ema[:, np.newaxis]
 
 def create_mom(price_array, window):
+    """Momentum
+
+    Args:
+        price_array (np.array): closing price most of the case
+        window (int): number of periods back in time 
+
+    Returns:
+        mom (np.array): Momentum
+    """    
     mom =  np.zeros(len(price_array))
     for i in range(window, len(price_array)):
         mom[i] = price_array[i] - price_array[i-window]
     return mom
 
 def create_bollband(high_array, low_array, close_array, window = 20, nb_std_dev = 2):
+    """Bollinger Band up and down as defined in Investopedia
+
+    Args:
+        high_array (np.array): High
+        low_array (np.array): Low
+        close_array (np.array): Close
+        window (int, optional): periods back in time. Defaults to 20.
+        nb_std_dev (int, optional): std dev back in time. Defaults to 2.
+
+    Returns:
+        bold_array (np.array), bolu_array (np.array): Down and Up
+    """    
     typical_array = create_typical_price(high_array, low_array, close_array)
     std_deviation = create_std_deviation(typical_array, window)[:,0] * nb_std_dev
     ma_array = create_sma(typical_array, window)[:,0]
@@ -56,6 +129,15 @@ def create_bollband(high_array, low_array, close_array, window = 20, nb_std_dev 
     return bold_array[:, np.newaxis], bolu_array[:, np.newaxis]
 
 def create_macd(price_array, window = [12, 26]):
+    """Moving Average Convergence Divergence
+
+    Args:
+        price_array (np.array): typical price most of the case
+        window (list, optional): periods used for Moving Averages. Defaults to [12, 26].
+
+    Returns:
+        macd (np.array): MACD
+    """    
     sma_12 = create_sma(price_array, window[0])[:,0]
     sma_26 = create_sma(price_array, window[1])[:,0]
     ema_12 = create_ema(price_array, sma_12, window[0])[:,0]
@@ -63,9 +145,19 @@ def create_macd(price_array, window = [12, 26]):
     diff_ema = ema_12 - ema_26
     sma_9 = create_sma(diff_ema, 9)[:,0]
     v = create_ema(diff_ema, sma_9, 9)[:,0]
-    return np.subtract(diff_ema, v)[:, np.newaxis]
+    macd = np.subtract(diff_ema, v)[:, np.newaxis]
+    return macd
 
 def create_return(price_array, window):
+    """Relative variation of price between n+1 and n
+
+    Args:
+        price_array (np.array): closing price most of the case
+        window (int): periods back in time
+
+    Returns:
+        output (np.array): Relative variation
+    """    
     output = np.zeros(len(price_array))
     for i in range(window, len(price_array)):
         output[i] = float(price_array[i+1] - price_array[i+1-window])/float(price_array[i+1-window])
@@ -73,23 +165,48 @@ def create_return(price_array, window):
     return output
 
 def create_up_down(price_array, window):
+    """Consecutive Price Trends
+
+    Args:
+        price_array (np.array): closing price most of the case
+        window (int): periods back in time
+
+    Returns:
+        pastUD (np.array): Consecutive Price Trends
+    """    
     pastUD = np.zeros(len(price_array))
     for i in range(window+1, len(price_array)):
         pastUD[i] = window - 2*np.sum(price_array[i-window:i] < price_array[i-window-1:i-1])
     return pastUD
 
-def create_day_since_cross(cross_array):
-    day_since_cross = np.zeros(len(cross_array))
+def create_period_since_cross(cross_array):
+    """Period Since Cross
+
+    Args:
+        cross_array (np.array): Price-MA cross
+
+    Returns:
+        period_since_cross (np.array): Period Since MA and price cross 
+    """    
+    period_since_cross = np.zeros(len(cross_array))
     num = 0
     for i in range(len(cross_array)):
         if cross_array[i] == 0:
             num += 1
         else:
             num = 0
-        day_since_cross[i] = num
-    return day_since_cross
+        period_since_cross[i] = num
+    return period_since_cross
 
 def create_macd_cross(macd):
+    """MACD-y=0 cross
+
+    Args:
+        macd (np.array): MACD array
+
+    Returns:
+        macd_cross (np.array): MACD cross 
+    """    
     macd_cross = np.zeros(len(macd))
     for i in range(1, len(macd)):
         if macd[i-1] < 0 and macd[i] > 0:
@@ -101,6 +218,15 @@ def create_macd_cross(macd):
     return macd_cross[:, np.newaxis]
 
 def create_ma_cross(ma, price_array):
+    """Moving Average Cross
+
+    Args:
+        ma (np.array): moving average
+        price_array (np.array): closing price most of the time
+
+    Returns:
+        ma_cross (np.array): MA-price cross
+    """    
     ma_cross = np.zeros(len(ma))
     for i in range(1, len(ma)):
         if ma[i-1] < price_array[i-1] and ma[i] > price_array[i]:
@@ -112,6 +238,15 @@ def create_ma_cross(ma, price_array):
     return ma_cross[:, np.newaxis]
 
 def create_rsi(series, period = 14):
+    """Relative Strength Index
+
+    Args:
+        series (np.array): price array
+        period (int, optional): periods back in time. Defaults to 14.
+
+    Returns:
+        rsi (np.array): RSI 
+    """    
     delta = series.diff().dropna()
     u = delta * 0
     d = u.copy()
@@ -123,36 +258,58 @@ def create_rsi(series, period = 14):
     d = d.drop(d.index[:(period-1)])
     rs = pd.stats.moments.ewma(u, com=period-1, adjust=False) / \
     pd.stats.moments.ewma(d, com=period-1, adjust=False)
-    return 100 - 100 / (1 + rs)
+    rsi = 100 - 100 / (1 + rs)
+    return rsi
 
-def create_sto(close, low, high, n = 14): 
+def create_sto(close, low, high, n = 14):
+    """Stochastic Oscillator
+
+    Args:
+        close (np.array): Close
+        low ([type]): Low
+        high ([type]): High
+        n (int, optional): periods back in time. Defaults to 14.
+
+    Returns:
+        STOK (np.array), STOD (np.array): Slow and fast stochastics
+    """    
     STOK = ((close - pd.rolling_min(low, n)) / (pd.rolling_max(high, n) - pd.rolling_min(low, n))) * 100
     STOD = pd.rolling_mean(STOK, 3)
     return STOK[:, np.newaxis], STOD[:, np.newaxis]
 
-def create_class(price_array):
-    output = np.zeros(len(price_array))
-    for i in range(len(price_array)):
-        if price_array[i+1] > price_array[i]:
-            output[i] = 1
-        if i+2 == len(price_array): break
-    return output
-
 def normalize(array):
-    # output = np.std(array)
+    """Normalization is necessary when features are in different scales
+
+    Args:
+        array (np.array): preprocessed data 
+
+    Returns:
+        array (np.array): normalized data 
+    """    
     for i in range(2,32):
         mean = np.mean(array[:,i])
         std = np.std(array[:,i])
         sub = np.subtract(array[:,i], mean)
         array[:,i] = np.divide(sub, std, out=np.zeros_like(sub), where=std!=0)
+    # Below is a naive implementation for normalization, returns the same results in much more time
+    # output = np.std(array)
     # for i in range(array.shape[1]):
     #     mean = np.mean(array[:,i])
     #     print(mean)
     #     std = np.std(array[:,i])
     #     output[:,i] = np.divide(np.subtract(array[:,i], mean), std)
+    #     array = output
     return array
 
 def preprocess(data):
+    """Preprocessing function that synthesizes all necessary features
+
+    Args:
+        data (pd.dataframe): Raw OCHL-Volume data
+
+    Returns:
+        data_array (np.array): Processed features based on trading indicators
+    """    
     data_array = data.to_numpy()
 
     datetime = data_array[:,0][:, np.newaxis]
@@ -294,3 +451,28 @@ def preprocess(data):
     print("%s seconds for macdc" % (time.time() - readStartTime))
 
     return data_array
+
+
+# ----------------------------------------------------------------- Test
+def test():
+    """This function is internal to INDICATORS.py, it is meant for debugging but also serves as unit test
+    """
+    print("----- TEST FOR INDICATORS.PY -----")
+    read_col = ["Date and Time", "Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks"]
+    data = pd.read_csv('../Data/Output/Production/AAPL.csv', usecols=read_col)
+    cols = data.columns.tolist()
+    cols = cols[-1:] + cols[:-1]
+    data = data[cols]
+    data["Date"] = pd.DatetimeIndex(data["Date and Time"]).dayofweek
+    print("----- PREPROCESS ------")
+    preprocessedData = preprocess(data)
+    print(preprocessedData)
+    print("----- NORMALIZE ------")
+    features = ["Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks", "SMA-5", "SMA-10", "SMA-15", "SMA-20", "SMA-50", "SMA-100", "SMA-200", "EMA-5", "EMA-10", "EMA-15", "EMA-20", "EMA-50", "EMA-100", "EMA-200", "BOLU-20", "BOLD-20", "MACD", "SD-5", "SD-10", "SD-15", "SD-20", "SD-50", "SD-100", "SD-200", "SMAC-5", "SMAC-10", "SMAC-15", "SMAC-20", "SMAC-50", "SMAC-100", "SMAC-200", "EMAC-5", "EMAC-10", "EMAC-15", "EMAC-20", "EMAC-50", "EMAC-100", "EMAC-200", "MACDC"]
+    dataframe = pd.DataFrame(data=preprocessedData[:,1:],    # values
+                            index=preprocessedData[:,0],    # 1st column as index
+                            columns=features)
+    dataframe.index = pd.to_datetime(dataframe.index)
+    normalizedData = normalize(dataframe.to_numpy())
+    print(normalizedData)
+    print("----------------------------------")

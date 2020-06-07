@@ -87,7 +87,15 @@ def annotation(windowSize):
                 day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
                 if day == dayEnd:
                     endReached = True
-    groupedData = pd.DataFrame(data=groupedData)
+
+    col_names = []
+
+    # generate feature names
+    for i in range(windowSize):
+        for c in reversed(col):
+            col_names.append(c+"-"+str(windowSize-i-1))
+
+    groupedData = pd.DataFrame(data=groupedData, columns=col_names)
     groupedLabel = pd.DataFrame(data=groupedLabel, columns=["Label"])
     xy_array = groupedData.assign(Label = groupedLabel.values)
     xy_array.to_csv(timeURL + timeframe + "/xy-array.csv", index=False)
@@ -256,12 +264,12 @@ def grid_opti(x_train, y_train):
 # *************************** MAIN ***********************************
 
 for windowSize in windowSizes:
-    # annotation(windowSize)
-    xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
-    groupedData = xy_array.iloc[:,:-1].to_numpy()
-    groupedLabel = xy_array["Label"].to_numpy()
-    averageIncrease, averageAcc = train(groupedData, groupedLabel)
-    print("Timeframe", timeframe, "features", col, "Window size", windowSize, "Average increase", averageIncrease, "Average accuracy", averageAcc)
+    annotation(windowSize)
+    # xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
+    # groupedData = xy_array.iloc[:,:-1].to_numpy()
+    # groupedLabel = xy_array["Label"].to_numpy()
+    # averageIncrease, averageAcc = train(groupedData, groupedLabel)
+    # print("Timeframe", timeframe, "features", col, "Window size", windowSize, "Average increase", averageIncrease, "Average accuracy", averageAcc)
 
     # pca_data = PCA_train(xy_array)
     # averageIncrease, averageAcc = train(pca_data.to_numpy(), groupedLabel)
