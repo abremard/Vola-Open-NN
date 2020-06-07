@@ -12,7 +12,7 @@ from sklearn.model_selection import KFold
 # !!!!!!!!!!!!!!!!!!!!! Wait for new data and change stockNames array to split !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 # Variables
-stockNames = ["AMZN","ABT","ACN","AAPL","AMGN","ADBE","BA","CCEP","CMCSA","CSCO","CVX","DOWWI","FB","HD","INTC","JNJ","MO","NFLX"]
+stockNames = ["AMZN","ABT","ACN","AAPL","AMGN","ADBE","BA","CCEP","CMCSA","CSCO","CVX","DOW","FB","HD","INTC","JNJ","MO","NFLX"]
 dayEnd = '2020-05-30'
 dayStart = '2019-01-01'
 dataSize = 4878

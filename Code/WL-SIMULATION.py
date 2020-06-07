@@ -9,7 +9,7 @@ import dask.dataframe as dd # Dask is meant for performance impovement, not impl
 import glob
 import os
 
-stockNames = ["AMZN","AAPL","ABT","ACN","AMGN","ADBE","BA","CCEP","CMCSA","CSCO","CVX","DOWWI","FB","HD","INTC","JNJ","MO","NFLX"]
+stockNames = ["AMZN","AAPL","ABT","ACN","AMGN","ADBE","BA","CCEP","CMCSA","CSCO","CVX","DOW","FB","HD","INTC","JNJ","MO","NFLX"]
 
 tickURL = "../Data/Input/Tick/"
 
@@ -148,7 +148,7 @@ for stock in stockNames:
                         if pos['inPosition'] == True:
                                 
                             if pos['order'] == 'buy':
-                                # Stop-loss triggered
+                                # Stop-loss trigger
                                 if row.Low < pos['stopLoss'] or row.Index == len(WLDataframe) - 1:
                                     fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="Red", opacity=0.3, line_width=0))
                                     pos['exitPrice'] = pos['stopLoss']
@@ -164,8 +164,8 @@ for stock in stockNames:
                                         nbBuyLoss = nbBuyLoss + 1
                                         buyLossProfit = buyLossProfit + pos['profit']
                                     pos['inPosition'] = False
-                                    break
-                                # First objective reached triggered
+                                    continue
+                                # First objective reached trigger
                                 if not(pos['firstObjectiveReached']):
                                     if row.High > firstTargetHigh:
                                         pos['stopLoss'] = ovRangeHigh
@@ -175,6 +175,15 @@ for stock in stockNames:
                                         profit = profit + pos['profit']
                                 # Price is over first objective
                                 elif row.High > firstTargetHigh :
+                                    # Second objective reached trigger
+                                    if not(pos['secondObjectiveReached']):
+                                        if row.High > secondTargetHigh:
+                                            fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="Blue", opacity=0.3, line_width=0))
+                                            pos['secondObjectiveReached'] = True
+                                            pos['profit'] = pos['profit'] + (firstTargetHigh - pos['entryPrice']) * pos['sizing'] * 2 / 3
+                                            profit = profit + pos['profit']
+                                            pos['inPosition'] = False
+                                            continue
                                     if trend:
                                         if row.High > previousHigh:
                                             top = row.High
@@ -191,7 +200,7 @@ for stock in stockNames:
 
                             elif pos['order'] == 'sell':
                                 # Stop-loss triggered
-                                if row.Low > pos['stopLoss'] or row.Index == len(WLDataframe) - 1:
+                                if row.High > pos['stopLoss'] or row.Index == len(WLDataframe) - 1:
                                     fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="Red", opacity=0.3, line_width=0))
                                     pos['exitPrice'] = pos['stopLoss']
                                     if pos['firstObjectiveReached']:
@@ -206,7 +215,7 @@ for stock in stockNames:
                                         nbSellLoss = nbSellLoss + 1
                                         sellLossProfit = sellLossProfit + pos['profit']
                                     pos['inPosition'] = False
-                                    break
+                                    continue
                                 # First objective reached triggered
                                 if not(pos['firstObjectiveReached']):
                                     if row.Low < firstTargetLow:
@@ -215,6 +224,15 @@ for stock in stockNames:
                                         pos['firstObjectiveReached'] = True
                                         pos['profit'] = pos['profit'] + (pos['entryPrice'] - firstTargetLow) * pos['sizing'] / 3
                                         profit = profit + pos['profit']
+                                # Second objective reached triggered
+                                # if not(pos['secondObjectiveReached']):
+                                #     if row.Low < secondTargetLow:
+                                #         fig.add_shape(dict(type="rect", x0=row.Index, x1=row.Index+1, yref="paper", y0=0, y1=1, fillcolor="Blue", opacity=0.3, line_width=0))
+                                #         pos['secondObjectiveReached'] = True
+                                #         pos['profit'] = pos['profit'] + (pos['entryPrice'] - secondTargetLow) * pos['sizing'] * 2 / 3
+                                #         profit = profit + pos['profit']
+                                #         pos['inPosition'] = False
+                                #         continue
                                 # Price is below first objective
                                 elif row.Low < firstTargetLow :
                                     if trend:
@@ -246,7 +264,8 @@ for stock in stockNames:
                             'profit': 0,
                             'exitPrice': None,
                             'inPosition': True,
-                            'firstObjectiveReached': False
+                            'firstObjectiveReached': False,
+                            'secondObjectiveReached': False
                         })
                         bottom = row.Low
                         top = row.High
@@ -268,7 +287,8 @@ for stock in stockNames:
                             'profit': 0,
                             'exitPrice': None,
                             'inPosition': True,
-                            'firstObjectiveReached': False
+                            'firstObjectiveReached': False,
+                            'secondObjectiveReached': False
                         })
                         bottom = row.Low
                         top = row.High
