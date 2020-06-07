@@ -1,3 +1,18 @@
+"""Main project job that runs daily.
+    1) Data is first refreshed through TickWrite Schedule
+    2) TODO WL simulation on the day before
+    3) Training data is annotated into standard xy_array
+    4) Prediction data is preprocessed, features are created using Time Data
+    5) Neural Network is trained
+    6) Predictions are sent by mail to recipients
+
+    Author :
+        Alexandre Bremard
+    Version Control :
+        1.0 - 07/06/2020 : annotation, preprocess, train, send message
+"""
+
+# ----------------------------------------------------------------- External Imports
 import pandas as pd
 import numpy as np
 import os
@@ -5,38 +20,49 @@ import math
 import tensorflow as tf
 from tensorflow import keras
 from sklearn.metrics import confusion_matrix
-import INDICATORS as idc
-import SYMBOL as sb
-import schedule
 import time
 from mailjet_rest import Client
 import os
-
 import base64
 import csv
 from io import StringIO
-
 import datetime
 from matplotlib import pyplot as plt
 from sklearn.model_selection import KFold
 
+# ----------------------------------------------------------------- Internal Imports
+import INDICATORS as idc
+import SYMBOL as sb
+
+
+# ----------------------------------------------------------------- Parameters
 timeframe = '5min'
 dataSize = 2958
 col = ["SMA-20", "SMA-200", "Volume"]
 nbCandles = 78
 windowSize = 78
 stockNames = ["AMZN","ABT","ACN","AAPL","BA","CSCO","CVX","DOW","FB","MO","NFLX"]
-dayEnd = '2020-05-30'
 dayStart = '2019-01-01'
-
 timeURL = "../Data/Input/Time/"
-
+# tradingDay is current day
 tradingDay = datetime.datetime.today().strftime('%Y-%m-%d')
+# predictionDay is the day before (in terms of market days)
 predictionDay = (pd.to_datetime(tradingDay) - pd.Timedelta('1 day')).strftime('%Y-%m-%d')
+while datetime.datetime.strptime(predictionDay, '%Y-%m-%d').weekday() in (5,6):
+    predictionDay = (pd.to_datetime(predictionDay) - pd.Timedelta('1 day')).strftime('%Y-%m-%d')
+
+# ----------------------------------------------------------------- Body
 
 def annotation(windowSize):
-    inputNeurones = windowSize * len(col)
+    """Annotate training set
 
+    Args:
+        windowSize (int): periods back in time used to determine training set features
+
+    Output:
+        xy_array (pd.dataframe) file is saved as CSV (useful for statistic analysis)
+    """    
+    inputNeurones = windowSize * len(col)
     # Initialize
     groupedData = np.empty((dataSize,inputNeurones,))
     groupedLabel = np.empty((dataSize,))
@@ -44,9 +70,7 @@ def annotation(windowSize):
 
     # Volatile
     volaOpen = pd.read_csv("../Data/Output/WL/Benchmark/benchmark.csv", usecols=["Symbol", "Date", "Score"])
-
     endReached = False
-
 
     # Match data to label
     for stockName in stockNames:
@@ -65,7 +89,7 @@ def annotation(windowSize):
                 while(not(os.path.isfile(fname))):
                     day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
                     fname = timeURL + timeframe + '/' + stockName + "/" + day + ".csv" 
-                    if day == dayEnd:
+                    if day == predictionDay:
                         endReached = True
                         break
 
@@ -80,7 +104,7 @@ def annotation(windowSize):
                     i = i+1
             else:
                 day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
-                if day == dayEnd:
+                if day == predictionDay:
                     endReached = True
     groupedData = pd.DataFrame(data=groupedData)
     groupedLabel = pd.DataFrame(data=groupedLabel, columns=["Label"])
@@ -88,7 +112,14 @@ def annotation(windowSize):
     print(xy_array)
     xy_array.to_csv("../Data/Output/Production/xy-array.csv", index=False)
 
+
 def preprocess_test_data():
+    """This functions will generate synthetized features i.e. indicators on the previous day set of data.
+        All features are generated regardless of network usage.
+
+        Output:
+            intradayData (pd.dataframe): saved as CSV file (can be used for statistic analysis purposes)
+    """    
     read_col = ["Date and Time", "Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks"]
     stockNames = ["AAPL","ABT","ACN","ADBE","AMGN","AMZN","BA","CCEP","CMCSA","CSCO","CVX","DOW","FB","HD","INTC","JNJ","MO","NFLX"]
     features = ["Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks", "SMA-5", "SMA-10", "SMA-15", "SMA-20", "SMA-50", "SMA-100", "SMA-200", "EMA-5", "EMA-10", "EMA-15", "EMA-20", "EMA-50", "EMA-100", "EMA-200", "BOLU-20", "BOLD-20", "MACD", "SD-5", "SD-10", "SD-15", "SD-20", "SD-50", "SD-100", "SD-200", "SMAC-5", "SMAC-10", "SMAC-15", "SMAC-20", "SMAC-50", "SMAC-100", "SMAC-200", "EMAC-5", "EMAC-10", "EMAC-15", "EMAC-20", "EMAC-50", "EMAC-100", "EMAC-200", "MACDC"]
@@ -120,7 +151,15 @@ def preprocess_test_data():
         print("symbol", stock, ", OK!")
 
 def train(groupedData, groupedLabel):
+    """Training algorithm. Binary Crossentropy with 1 hidden layer. Network remains very simplified for now and is to be upgraded in the future.
 
+    Benchmark:
+        69.8% average precision
+
+    Args:
+        groupedData (pd.dataframe): Data
+        groupedLabel (pd.dataframe): Label
+    """    
     inputNeurones = windowSize * len(col)
 
     x_train = groupedData.to_numpy()
@@ -149,18 +188,12 @@ def train(groupedData, groupedLabel):
     
     predictionList.to_csv("../Data/Output/Production/predictions.csv")
 
-def job():
-    # annotation(windowSize)
-    xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
-    groupedData = xy_array.iloc[:,:-1]
-    groupedLabel = xy_array["Label"]
+def send_message(recipients):
+    """Sends mail to project owners using Mailjet API endpoint
 
-    # sb.rename()
-    preprocess_test_data()
-    train(groupedData, groupedLabel)
-    send_message()
-
-def send_message():
+    Args:
+        recipients ([dict()]): JSON-like recipient array
+    """    
     data = open("../Data/Output/Production/predictions.csv", 'rb').read()
     base64_encoded = base64.b64encode(data).decode('UTF-8')
     api_key = '1d63a0438536320237a4c1b853df59c9'
@@ -173,12 +206,7 @@ def send_message():
             "Email": "mogilno.trading@gmail.com",
             "Name": "Mogilno"
         },
-        "To": [
-            {
-            "Email": "bremard.alexandre@gmail.com",
-            "Name": "Alexandre"
-            }
-        ],
+        "To": recipients,
         "Subject": "Prediction Vola Open pour le " + predictionDay,
         "TextPart": "Ceci est un mail automatique.\nTableau des résultats de prédictions par le réseau pour la journée du " + predictionDay + ".\nLa valeur de prédiction est comprise entre 0 et 1:\n1 étant fortement recommandé, 0 étant pas du tout recommandé.",
         "Attachments": [
@@ -196,13 +224,41 @@ def send_message():
     print (result.status_code)
     print (result.json())
 
-# Scheduler
-schedule.every().day.at("10:15").do(job)
+def job():
+    """Main job
+    """    
+    annotation(windowSize)
+    xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
+    groupedData = xy_array.iloc[:,:-1]
+    groupedLabel = xy_array["Label"]
 
-# *************************** MAIN ***********************************
+    # sb.rename('../Data/Output/Production/')
+    preprocess_test_data()
+    train(groupedData, groupedLabel)
+    recipients = [
+            {"Email": "bremard.alexandre@gmail.com",
+            "Name": "Alexandre"},
+            {"Email": "philippe.bremard.idts@gmail.com",
+            "Name": "Philippe"},
+            ]
+    send_message(recipients)
 
-job()
+# ----------------------------------------------------------------- Test
 
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+def test():
+    """This function is internal to PRODUCTION.py, it is meant for debugging but also serves as unit test
+    """
+    print("----- TEST FOR PRODUCTION.PY -----")
+    # annotation(windowSize)
+    xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
+    groupedData = xy_array.iloc[:,:-1]
+    groupedLabel = xy_array["Label"]
+    # sb.rename('../Data/Output/Production/')
+    preprocess_test_data()
+    train(groupedData, groupedLabel)
+    recipients = [
+            {"Email": "bremard.alexandre@gmail.com",
+            "Name": "Alexandre"}
+            ]
+    send_message(recipients)
+    print("----------------------------------")
