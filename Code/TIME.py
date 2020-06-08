@@ -1,34 +1,37 @@
-# ********************************** WORKS FOR EVERY FRAME EXCEPT DAY FRAMES FOR NOW ********************************************
+"""Tools for Time-based Data processing
+    Author :
+        Alexandre Bremard
+    Contributors :
+        -
+    Version Control :
+        0.1 - 09/06/2020 : split
+"""
 
+# ----------------------------------------------------------------- External Imports 
 import time
 import os
-
 import numpy as np
 import pandas as pd
 from datetime import datetime
-
+# ----------------------------------------------------------------- Internal Imports 
 import INDICATORS as idc
-
+# ----------------------------------------------------------------- Parameters
 stockNames = ["AAPL","ABT","ACN","ADBE","AMGN","AMZN","BA","CCEP","CMCSA","CSCO","CVX","DOW","FB","HD","INTC","JNJ","MO","NFLX"]
 features = ["Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks", "SMA-5", "SMA-10", "SMA-15", "SMA-20", "SMA-50", "SMA-100", "SMA-200", "EMA-5", "EMA-10", "EMA-15", "EMA-20", "EMA-50", "EMA-100", "EMA-200", "BOLU-20", "BOLD-20", "MACD", "SD-5", "SD-10", "SD-15", "SD-20", "SD-50", "SD-100", "SD-200", "SMAC-5", "SMAC-10", "SMAC-15", "SMAC-20", "SMAC-50", "SMAC-100", "SMAC-200", "EMAC-5", "EMAC-10", "EMAC-15", "EMAC-20", "EMAC-50", "EMAC-100", "EMAC-200", "MACDC"]
-
-dayEnd = '2020-05-01'
-dayStart = '2019-01-01'
-
-# timeframes = ["1min", "2min", "5min", "10min", "15min", "30min", "60min", "120min", "240min", "390min"]
-timeframes = ["1min", "2min", "5min"]
-# timeframes = ["10min", "15min", "30min", "60min", "120min", "240min", "390min"]
-
+timeframes = ["5min"]
 read_col = ["Date and Time", "Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks"]
 write_col = ["Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks"]
-
 timeURL = '../Data/Input/Time/'
-
-def process_data():
+# ----------------------------------------------------------------- Body
+def process_data(dayStart, dayEnd):
+    """First creates features using INDICATORS.PY then filters data by date and saves as separate CSV files.
+        The processed data can later be used for network training purposes.
+    Args:
+        dayStart (str "%Y-%M-%d"): lower bound
+        dayEnd (str "%Y-%M-%d"): upper bound
+    """
 
     for timeframe in timeframes:
-
-        # features_data = pd.DataFrame(columns=features)
         
         timeframeURL = timeURL + timeframe
 
@@ -69,7 +72,6 @@ def process_data():
                     intradayData = pd.DataFrame(data=intradayData,    # values
                                             columns=features)
                     intradayData.to_csv(baseURL + "/" + day + ".csv", index=False)
-                    # features_data = features_data.append(intradayData)
                     print("symbol", stock, "day", day, ", OK!")
                     day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
             print("%s seconds" % (time.time() - readStartTime))
@@ -80,10 +82,16 @@ def process_data():
             print("Directory " , directory ,  " Created ")
         else:    
             print("Directory " , directory ,  " already exists")
-        # features_data.to_csv(directory + "/processed-data.csv")
 
-def combine_data():
+def combine_data(dayStart, dayEnd):
+    """Used for data analytics purposes. Combine filtered and processed data into large CSV file that can later be used for feature selection.
 
+    Args:
+        dayStart (str "%Y-%M-%d"): lower bound
+        dayEnd (str "%Y-%M-%d"): upper bound
+    Output:
+        dataframe saved as CSV
+    """    
     for timeframe in timeframes:
 
         combined_data = pd.DataFrame()
@@ -108,9 +116,11 @@ def combine_data():
                     day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
         
         combined_data.to_csv(directory + "/processed-data.csv")
-
-
-
-
-combine_data()
-# process_data()
+# ----------------------------------------------------------------- Test
+def test():
+    """This function is internal to TIME.py, it is meant for debugging but also serves as unit test
+    """    
+    dayEnd = datetime.today().strftime('%Y-%m-%d')
+    dayStart = (pd.to_datetime(dayEnd) - pd.Timedelta('10 day')).strftime('%Y-%m-%d')
+    process_data(dayStart, dayEnd)
+    combine_data(dayStart, dayEnd)

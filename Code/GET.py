@@ -15,8 +15,6 @@ import requests
 import os.path
 import urllib.request as url
 import urllib.error as urlerror
-
-
 # ----------------------------------------------------------------- Body
 def get(symbollist_path = "../Data/Output/Production/SymbolList.csv",
         save_path = "../Data/Output/Production/"):
@@ -85,8 +83,6 @@ def get(symbollist_path = "../Data/Output/Production/SymbolList.csv",
             else:
                 # printing the urlerror
                 print(e.headers)
-
-
 # ----------------------------------------------------------------- Test
 def test():
     """This function is internal to GET.py, it is meant for debugging but also serves as unit test

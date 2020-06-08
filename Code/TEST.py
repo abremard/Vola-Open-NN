@@ -16,3 +16,12 @@ indicators.test()
 
 import PRODUCTION as production
 production.test()
+
+import SYMBOL as symbol
+symbol.test()
+
+import TICK as tick
+tick.test()
+
+import TIME as time
+time.test()

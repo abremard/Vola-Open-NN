@@ -14,8 +14,6 @@
 import numpy as np
 import pandas as pd
 import time
-
-
 # ----------------------------------------------------------------- Body
 def create_std_deviation(price_array, window):
     """Standard price deviation for a given time window
@@ -451,8 +449,6 @@ def preprocess(data):
     print("%s seconds for macdc" % (time.time() - readStartTime))
 
     return data_array
-
-
 # ----------------------------------------------------------------- Test
 def test():
     """This function is internal to INDICATORS.py, it is meant for debugging but also serves as unit test

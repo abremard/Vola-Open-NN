@@ -29,12 +29,9 @@ from io import StringIO
 import datetime
 from matplotlib import pyplot as plt
 from sklearn.model_selection import KFold
-
 # ----------------------------------------------------------------- Internal Imports
 import INDICATORS as idc
 import SYMBOL as sb
-
-
 # ----------------------------------------------------------------- Parameters
 timeframe = '5min'
 dataSize = 2958
@@ -51,9 +48,7 @@ tradingDay = datetime.datetime.today().strftime('%Y-%m-%d')
 predictionDay = (pd.to_datetime(tradingDay) - pd.Timedelta('1 day')).strftime('%Y-%m-%d')
 while datetime.datetime.strptime(predictionDay, '%Y-%m-%d').weekday() in (5,6):
     predictionDay = (pd.to_datetime(predictionDay) - pd.Timedelta('1 day')).strftime('%Y-%m-%d')
-
 # ----------------------------------------------------------------- Body
-
 def annotation(windowSize):
     """Annotate training set
 
@@ -245,7 +240,6 @@ def job():
     send_message(recipients)
 
 # ----------------------------------------------------------------- Test
-
 def test():
     """This function is internal to PRODUCTION.py, it is meant for debugging but also serves as unit test
     """
@@ -264,4 +258,4 @@ def test():
     # send_message(recipients)
     print("----------------------------------")
 
-job()
+# job()

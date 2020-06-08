@@ -13,7 +13,6 @@ Version Control :
 import plotly.graph_objects as go
 import os
 import pandas as pd
-
 # ----------------------------------------------------------------- Body 
 def plot_data(data, columns, traceMode='lines'):
     """This function plots your featured data into 2D graphs
@@ -68,8 +67,6 @@ def amount_of_variation(data, timeframe, exportHTML = False, exportCSV = False):
         fig.write_html(url, auto_open=False)
 
     return fig
-
-
 # ----------------------------------------------------------------- Test
 def test():
     """This function is internal to FEATURES.py, it is meant for debugging but also serves as unit test
