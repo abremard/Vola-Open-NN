@@ -43,6 +43,7 @@ nbCandles = 78
 windowSize = 78
 stockNames = ["AMZN","ABT","ACN","AAPL","BA","CSCO","CVX","DOW","FB","MO","NFLX"]
 dayStart = '2019-01-01'
+dayEnd = '2020-05-30'
 timeURL = "../Data/Input/Time/"
 # tradingDay is current day
 tradingDay = datetime.datetime.today().strftime('%Y-%m-%d')
@@ -89,7 +90,7 @@ def annotation(windowSize):
                 while(not(os.path.isfile(fname))):
                     day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
                     fname = timeURL + timeframe + '/' + stockName + "/" + day + ".csv" 
-                    if day == predictionDay:
+                    if day == dayEnd:
                         endReached = True
                         break
 
@@ -104,7 +105,7 @@ def annotation(windowSize):
                     i = i+1
             else:
                 day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
-                if day == predictionDay:
+                if day == dayEnd:
                     endReached = True
     groupedData = pd.DataFrame(data=groupedData)
     groupedLabel = pd.DataFrame(data=groupedLabel, columns=["Label"])
@@ -227,7 +228,7 @@ def send_message(recipients):
 def job():
     """Main job
     """    
-    annotation(windowSize)
+    # annotation(windowSize)
     xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
     groupedData = xy_array.iloc[:,:-1]
     groupedLabel = xy_array["Label"]
@@ -260,5 +261,7 @@ def test():
             {"Email": "bremard.alexandre@gmail.com",
             "Name": "Alexandre"}
             ]
-    send_message(recipients)
+    # send_message(recipients)
     print("----------------------------------")
+
+job()
