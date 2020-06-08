@@ -208,7 +208,7 @@ def send_message(recipients):
             "Name": "Mogilno"
         },
         "To": recipients,
-        "Subject": "Prediction Vola Open pour le " + predictionDay,
+        "Subject": "Prediction Vola Open pour le " + tradingDay,
         "TextPart": "Ceci est un mail automatique.\nTableau des résultats de prédictions par le réseau pour la journée du " + predictionDay + ".\nLa valeur de prédiction est comprise entre 0 et 1:\n1 étant fortement recommandé, 0 étant pas du tout recommandé.",
         "Attachments": [
             {
