@@ -7,7 +7,11 @@
     Keras 2.3.1
 
 # Installing
-    -
+    Clone repository
+    Add data subfolder to project (please contact the owner for data subfolder)
+
+# Project structure
+    Please refer to structure.docx file for directory tree
 
 # Setup for production server
     !!! IMPORTANT !!!
