@@ -118,7 +118,7 @@ def combine_data(dayStart, dayEnd):
         combined_data.to_csv(directory + "/processed-data.csv")
 # ----------------------------------------------------------------- Test
 def test():
-    """This function is internal to TIME.py, it is meant for debugging but also serves as unit test
+    """This function is internal to TIMEDATA.py, it is meant for debugging but also serves as unit test
     """    
     dayEnd = datetime.today().strftime('%Y-%m-%d')
     dayStart = (pd.to_datetime(dayEnd) - pd.Timedelta('10 day')).strftime('%Y-%m-%d')

@@ -30,5 +30,3 @@ def test():
     """
     base = '../Data/Output/Production/'
     rename(base)
-
-rename('../Data/Input/Tick/')

@@ -1,15 +1,16 @@
 """Main project job that runs daily.
     1) Data is first refreshed through TickWrite Schedule
-    2) TODO WL simulation on the day before
-    3) Training data is annotated into standard xy_array
-    4) Prediction data is preprocessed, features are created using Time Data
-    5) Neural Network is trained
-    6) Predictions are sent by mail to recipients
+    2) Data is then split into date files using TICKDATA.PY and TIMEDATA.PY
+    3) TODO WL simulation on the day before
+    4) Training data is linked to prediction values into standard xy_array
+    5) Prediction data is preprocessed, features are created using Time Data
+    6) Neural Network is trained
+    7) Predictions are sent by mail to recipients
 
     Author :
         Alexandre Bremard
     Version Control :
-        1.0 - 07/06/2020 : annotation, preprocess, train, send message
+        1.0 - 07/06/2020 : preprocess, train, send message
 """
 
 # ----------------------------------------------------------------- External Imports
@@ -25,6 +26,8 @@ from mailjet_rest import Client
 import os
 import base64
 import csv
+import TICKDATA as tickdata
+import TIMEDATA as timedata
 from io import StringIO
 import datetime
 from matplotlib import pyplot as plt
@@ -32,6 +35,7 @@ from sklearn.model_selection import KFold
 # ----------------------------------------------------------------- Internal Imports
 import INDICATORS as idc
 import SYMBOL as sb
+import GENERATE_XY as generator
 # ----------------------------------------------------------------- Parameters
 timeframe = '5min'
 dataSize = 2958
@@ -49,66 +53,6 @@ predictionDay = (pd.to_datetime(tradingDay) - pd.Timedelta('1 day')).strftime('%
 while datetime.datetime.strptime(predictionDay, '%Y-%m-%d').weekday() in (5,6):
     predictionDay = (pd.to_datetime(predictionDay) - pd.Timedelta('1 day')).strftime('%Y-%m-%d')
 # ----------------------------------------------------------------- Body
-def annotation(windowSize):
-    """Annotate training set
-
-    Args:
-        windowSize (int): periods back in time used to determine training set features
-
-    Output:
-        xy_array (pd.dataframe) file is saved as CSV (useful for statistic analysis)
-    """    
-    inputNeurones = windowSize * len(col)
-    # Initialize
-    groupedData = np.empty((dataSize,inputNeurones,))
-    groupedLabel = np.empty((dataSize,))
-    i = 0
-
-    # Volatile
-    volaOpen = pd.read_csv("../Data/Output/WL/Benchmark/benchmark.csv", usecols=["Symbol", "Date", "Score"])
-    endReached = False
-
-    # Match data to label
-    for stockName in stockNames:
-        # Initialise
-        endReached = False
-        day = dayStart
-        # Loop into data
-        while not(endReached):
-            fname = timeURL + timeframe + '/' + stockName + "/" + day + ".csv"
-            if os.path.isfile(fname):
-                data = pd.read_csv(fname, usecols=col, skiprows=range(1, nbCandles - windowSize + 2))
-
-                day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
-                fname = timeURL + timeframe + '/' + stockName + "/" + day + ".csv"    
-
-                while(not(os.path.isfile(fname))):
-                    day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
-                    fname = timeURL + timeframe + '/' + stockName + "/" + day + ".csv" 
-                    if day == dayEnd:
-                        endReached = True
-                        break
-
-                if endReached:
-                    break
-
-                predictionValue = volaOpen.loc[(volaOpen['Date'] == day) & (volaOpen['Symbol'] == stockName)].iloc[0]['Score']
-                if predictionValue:
-                    label = not(math.isnan(predictionValue) or predictionValue <= 0)
-                    groupedLabel[i] = label
-                    groupedData[i] = data.values.flatten()
-                    i = i+1
-            else:
-                day = (pd.to_datetime(day) + pd.Timedelta('1 day')).strftime('%Y-%m-%d')
-                if day == dayEnd:
-                    endReached = True
-    groupedData = pd.DataFrame(data=groupedData)
-    groupedLabel = pd.DataFrame(data=groupedLabel, columns=["Label"])
-    xy_array = groupedData.assign(Label = groupedLabel.values)
-    print(xy_array)
-    xy_array.to_csv("../Data/Output/Production/xy-array.csv", index=False)
-
-
 def preprocess_test_data():
     """This functions will generate synthetized features i.e. indicators on the previous day set of data.
         All features are generated regardless of network usage.
@@ -126,6 +70,8 @@ def preprocess_test_data():
         cols = data.columns.tolist()
         cols = cols[-1:] + cols[:-1]
         data = data[cols]
+
+        print(data)
 
         data["Date"] = pd.DatetimeIndex(data["Date and Time"]).dayofweek
 
@@ -222,12 +168,15 @@ def send_message(recipients):
 
 def job():
     """Main job
-    """    
-    # annotation(windowSize)
+    """
+    highBound = datetime.datetime.today().strftime('%Y-%m-%d')
+    lowBound = (pd.to_datetime(highBound) - pd.Timedelta('10 day')).strftime('%Y-%m-%d')
+    timedata.process_data(lowBound, highBound)
+    tickdata.split(lowBound, highBound)
+    # generator.generate(windowSize, dayStart, dayEnd)
     xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
     groupedData = xy_array.iloc[:,:-1]
     groupedLabel = xy_array["Label"]
-
     # sb.rename('../Data/Output/Production/')
     preprocess_test_data()
     train(groupedData, groupedLabel)
@@ -244,7 +193,11 @@ def test():
     """This function is internal to PRODUCTION.py, it is meant for debugging but also serves as unit test
     """
     print("----- TEST FOR PRODUCTION.PY -----")
-    # annotation(windowSize)
+    highBound = datetime.datetime.today().strftime('%Y-%m-%d')
+    lowBound = (pd.to_datetime(highBound) - pd.Timedelta('10 day')).strftime('%Y-%m-%d')
+    timedata.process_data(lowBound, highBound)
+    tickdata.split(lowBound, highBound)
+    # generator.generate(windowSize, dayStart, dayEnd)
     xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
     groupedData = xy_array.iloc[:,:-1]
     groupedLabel = xy_array["Label"]
@@ -255,7 +208,8 @@ def test():
             {"Email": "bremard.alexandre@gmail.com",
             "Name": "Alexandre"}
             ]
-    # send_message(recipients)
+    send_message(recipients)
     print("----------------------------------")
 
-# job()
+job()
+# test()

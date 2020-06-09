@@ -33,9 +33,14 @@
 # Unit test
     python TEST.py
 
+# TODO
+    - improve money management strategy
+    - feature selections : pairwise correlation, multicollinearity, correlation with target, cluster analysis, forward selection, backward elimination, stepwise selection, LASSO, logistic regression, Tree-based selection
+    - extend usage to other trading strategies as a toolbox
+
 # Authors
     Alexandre Bremard - Initial work
 
 # License
-    Use of this library contains sensitive data. Users must not use, share, or store any of the data. 
-    (copyright© coming soon XD) 
+    Usage of this library contains sensitive data. Users must not use, share, or store any of the data for personnal use. 
+    (copyright© coming soon XD)

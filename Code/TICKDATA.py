@@ -55,7 +55,7 @@ def split(dayStart, dayEnd):
 
 # ----------------------------------------------------------------- Test
 def test():
-    """This function is internal to TICK.py, it is meant for debugging but also serves as unit test
+    """This function is internal to TICKDATA.py, it is meant for debugging but also serves as unit test
     """    
     dayEnd = datetime.today().strftime('%Y-%m-%d')
     dayStart = (pd.to_datetime(dayEnd) - pd.Timedelta('10 day')).strftime('%Y-%m-%d')
