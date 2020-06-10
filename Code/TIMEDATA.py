@@ -19,7 +19,7 @@ import INDICATORS as idc
 stockNames = ["AAPL","ABT","ACN","ADBE","AMGN","AMZN","BA","CCEP","CMCSA","CSCO","CVX","DOW","FB","HD","INTC","JNJ","MO","NFLX"]
 features = ["Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks", "SMA-5", "SMA-10", "SMA-15", "SMA-20", "SMA-50", "SMA-100", "SMA-200", "EMA-5", "EMA-10", "EMA-15", "EMA-20", "EMA-50", "EMA-100", "EMA-200", "BOLU-20", "BOLD-20", "MACD", "SD-5", "SD-10", "SD-15", "SD-20", "SD-50", "SD-100", "SD-200", "SMAC-5", "SMAC-10", "SMAC-15", "SMAC-20", "SMAC-50", "SMAC-100", "SMAC-200", "EMAC-5", "EMAC-10", "EMAC-15", "EMAC-20", "EMAC-50", "EMAC-100", "EMAC-200", "MACDC"]
 timeframes = ["5min"]
-read_col = ["Date and Time", "Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks"]
+read_col = ["Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks", "Date and Time"]
 write_col = ["Date", "Time", "Open", "High", "Low", "Close", "Volume", "Up Ticks", "Down Ticks"]
 timeURL = '../Data/Input/Time/'
 # ----------------------------------------------------------------- Body
@@ -40,6 +40,9 @@ def process_data(dayStart, dayEnd):
             baseURL = timeframeURL + '/' + stock
 
             data = pd.read_csv(baseURL + '.csv', usecols=read_col)
+            cols = data.columns.tolist()
+            cols = cols[-1:] + cols[:-1]
+            data = data[cols]
 
             data["Date"] = pd.DatetimeIndex(data["Date and Time"]).dayofweek
 
@@ -60,7 +63,6 @@ def process_data(dayStart, dayEnd):
             filteredData = dataframe.between_time('09:30', '16:00')
 
             day = dayStart
-
             readStartTime = time.time()
             while day != dayEnd:
                 intradayData = filteredData[day:day]

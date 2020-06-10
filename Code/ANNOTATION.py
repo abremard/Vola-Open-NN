@@ -1,5 +1,7 @@
 """Simulates trading day environment, positioning, sizing... of a WL Vola Open strategy
 
+TODO read existing benchmark and append new data instead of write whole set of data over
+
 Author :
     Alexandre Bremard
 Contributors :
@@ -13,7 +15,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import time
 import datetime
-import dask.dataframe as dd # Dask is meant for performance improvement, not implemented yet
+# import dask.dataframe as dd # Dask is meant for performance improvement, not implemented yet
 import glob
 import os
 # ----------------------------------------------------------------- Parameters 
@@ -48,7 +50,7 @@ def annotate(stockNames, dayStart, dayEnd, benchmark=False, exportHTML=False):
         path = tickURL + stock + "/*.csv"
         for fname in glob.glob(path):
             currentDay = os.path.basename(fname).split(".")[0]
-            if datetime.datetime.strptime(currentDay, '%Y-%m-%d').date() < dayStart or datetime.datetime.strptime(currentDay, '%Y-%m-%d').date() > dayEnd:
+            if datetime.datetime.strptime(currentDay, '%Y-%m-%d').date() < datetime.datetime.strptime(dayStart, '%Y-%m-%d').date() or datetime.datetime.strptime(currentDay, '%Y-%m-%d').date() > datetime.datetime.strptime(dayEnd, '%Y-%m-%d').date():
                 continue
             data = pd.read_csv(fname, usecols=["Date and Time", "Open", "High", "Low", "Close"], index_col="Date and Time")
             data.index.names = ["Date"]

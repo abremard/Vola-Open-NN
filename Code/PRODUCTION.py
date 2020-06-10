@@ -26,8 +26,6 @@ from mailjet_rest import Client
 import os
 import base64
 import csv
-import TICKDATA as tickdata
-import TIMEDATA as timedata
 from io import StringIO
 import datetime
 from matplotlib import pyplot as plt
@@ -36,6 +34,9 @@ from sklearn.model_selection import KFold
 import INDICATORS as idc
 import SYMBOL as sb
 import GENERATE_XY as generator
+import TICKDATA as tickdata
+import TIMEDATA as timedata
+import ANNOTATION as annotation
 # ----------------------------------------------------------------- Parameters
 timeframe = '5min'
 dataSize = 2958
@@ -70,8 +71,6 @@ def preprocess_test_data():
         cols = data.columns.tolist()
         cols = cols[-1:] + cols[:-1]
         data = data[cols]
-
-        print(data)
 
         data["Date"] = pd.DatetimeIndex(data["Date and Time"]).dayofweek
 
@@ -173,6 +172,7 @@ def job():
     lowBound = (pd.to_datetime(highBound) - pd.Timedelta('10 day')).strftime('%Y-%m-%d')
     timedata.process_data(lowBound, highBound)
     tickdata.split(lowBound, highBound)
+    # annotation.annotate(stockNames, dayStart, dayEnd, True, False)
     # generator.generate(windowSize, dayStart, dayEnd)
     xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
     groupedData = xy_array.iloc[:,:-1]
@@ -195,21 +195,22 @@ def test():
     print("----- TEST FOR PRODUCTION.PY -----")
     highBound = datetime.datetime.today().strftime('%Y-%m-%d')
     lowBound = (pd.to_datetime(highBound) - pd.Timedelta('10 day')).strftime('%Y-%m-%d')
-    timedata.process_data(lowBound, highBound)
-    tickdata.split(lowBound, highBound)
+    # timedata.process_data(lowBound, highBound)
+    # tickdata.split(lowBound, highBound)
+    # annotation.annotate(stockNames, dayStart, dayEnd, True, False)
     # generator.generate(windowSize, dayStart, dayEnd)
     xy_array = pd.read_csv(timeURL + timeframe + "/xy-array.csv")
     groupedData = xy_array.iloc[:,:-1]
     groupedLabel = xy_array["Label"]
     # sb.rename('../Data/Output/Production/')
-    preprocess_test_data()
-    train(groupedData, groupedLabel)
+    # preprocess_test_data()
+    # train(groupedData, groupedLabel)
     recipients = [
             {"Email": "bremard.alexandre@gmail.com",
             "Name": "Alexandre"}
             ]
-    send_message(recipients)
+    # send_message(recipients)
     print("----------------------------------")
 
-job()
+# job()
 # test()
