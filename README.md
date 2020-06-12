@@ -13,6 +13,9 @@
 # Project structure
     Please refer to structure.docx file for directory tree
 
+# Workflow
+    Please refer to corresponding subdirectory
+
 # Setup for production server
     !!! IMPORTANT !!!
 
