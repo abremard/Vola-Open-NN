@@ -137,8 +137,8 @@ def send_message(recipients):
     """    
     data = open("../Data/Output/Production/predictions.csv", 'rb').read()
     base64_encoded = base64.b64encode(data).decode('UTF-8')
-    api_key = '1d63a0438536320237a4c1b853df59c9'
-    api_secret = '8e9ec8191b0183573a0cd94750aa37d8'
+    api_key = '*****'
+    api_secret = '*****'
     mailjet = Client(auth=(api_key, api_secret), version='v3.1')
     data = {
     'Messages': [
